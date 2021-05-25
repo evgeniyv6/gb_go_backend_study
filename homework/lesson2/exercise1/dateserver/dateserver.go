@@ -17,12 +17,13 @@ import (
 )
 
 var (
-	messages = make(chan string)
-	sugar    *zap.SugaredLogger
-	ticker   *time.Ticker
-	mu       sync.Mutex
+	messages = make(chan string) // канал для бродкастинга сообщений из консоли сервера всем подключенным клиентам
+	sugar    *zap.SugaredLogger  // https://github.com/uber-go/zap логгер,
+	ticker   *time.Ticker        // тиккер для рассылки клиентам datetime
+	mu       sync.Mutex          // мьютекс для предотвращения гонки при доступе к списку клиентских соединений
 )
 
+// структура с параметрами для сервера
 type SrvParams struct {
 	address, port string
 	sugar         *zap.SugaredLogger
@@ -35,15 +36,15 @@ func NewSrvParams(addr, port string, dur time.Duration) *SrvParams {
 	if err != nil {
 		log.Println(err)
 	}
-	s := &SrvParams{
+	return &SrvParams{
 		address: addr,
 		port:    port,
 		sugar:   logger.Sugar(),
 		ticker:  time.NewTicker(dur * time.Second),
 	}
-	return s
 }
 
+// рассылает либо datetime тиккера, либо сообщения из консоли сервера, либо завершается при ctx.Done
 func spammer(clients *[]net.Conn, ctx context.Context) {
 	for {
 		select {
@@ -74,6 +75,8 @@ func spammer(clients *[]net.Conn, ctx context.Context) {
 	}
 }
 
+// запускает в горутине spammer
+// ожидает ввода с консоли сервера и передает сообщение в канал messages
 func (s *SrvParams) handleConn(clients *[]net.Conn, ctx context.Context) {
 	go spammer(clients, ctx)
 
@@ -106,8 +109,9 @@ func (s *SrvParams) Server() {
 		clients      = []net.Conn{}
 		ctx, cancel  = context.WithCancel(context.Background())
 		cancelSignal = make(chan os.Signal, 1)
-		done         = make(chan bool, 1)
+		done         = make(chan bool, 1) // канал, при получении сообщения в который - return
 
+		// обработка сигнала прерывания
 		catchSignal = func(cancelFunc context.CancelFunc, l net.Listener) {
 			sig := <-cancelSignal
 			sugar.Warnf("Received stop signal - %v", sig)
@@ -151,7 +155,7 @@ func (s *SrvParams) Server() {
 }
 
 func main() {
-	config, err := config2.ReadConfig("./config.json")
+	config, err := config2.ReadConfig("./config.json") // параметры для сервера считываем из файла config.json см. package config
 	if err != nil {
 		log.Fatalf("Couldnot read configuration file. Err: %s", err)
 	}

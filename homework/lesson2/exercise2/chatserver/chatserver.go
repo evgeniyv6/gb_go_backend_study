@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// вместо отдельного канала создаю структуру для хранения имени пользователя
 type client struct {
 	Messages chan<- string
 	Nickname string
@@ -57,11 +58,11 @@ func broadcaster() {
 }
 
 func handleConn(conn net.Conn) {
-	timeout := time.NewTimer(100 * time.Second)
-	ch := make(chan string)
+	timeout := time.NewTimer(100 * time.Second) // время простоя, если пользователь при подключении ничего не вводит - то закрываем соединение
+	ch := make(chan string)                     // канал для отправки сообщений клиентам
 	go clientWriter(conn, ch)
 
-	enter := make(chan string)
+	enter := make(chan string) // входящие сообщения от клиентов
 	go func() {
 		input := bufio.NewScanner(conn)
 		for input.Scan() {
@@ -81,8 +82,11 @@ loop:
 		select {
 		case m := <-enter:
 			messages <- who + " : " + m
-		case <-timeout.C:
-			conn.Close()
+		case <-timeout.C: // если пользователь при подключении ничего не вводит - то закрываем соединение
+			err := conn.Close()
+			if err != nil {
+				log.Fatal(err)
+			}
 			break loop
 		}
 
@@ -90,12 +94,18 @@ loop:
 
 	leaving <- cl
 	messages <- who + " has left"
-	conn.Close()
+	err := conn.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func clientWriter(conn net.Conn, ch <-chan string) {
 	for msg := range ch {
-		fmt.Fprintln(conn, msg)
+		_, err := fmt.Fprintln(conn, msg)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 

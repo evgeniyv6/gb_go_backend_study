@@ -9,6 +9,7 @@ import (
 	"strconv"
 )
 
+// клиент особо не модифицировал, добавил обработку ошибок
 func Client(address string, port int) {
 	conn, err := net.Dial("tcp", net.JoinHostPort(address, strconv.Itoa(port)))
 	if err != nil {
@@ -22,10 +23,16 @@ func Client(address string, port int) {
 		}
 	}()
 	go func() {
-		io.Copy(os.Stdout, conn)
+		_, err := io.Copy(os.Stdout, conn)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}()
 
-	io.Copy(conn, os.Stdin)
+	_, err = io.Copy(conn, os.Stdin)
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Printf("%s: exit", conn.LocalAddr())
 }
 
