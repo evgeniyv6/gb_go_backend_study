@@ -112,12 +112,12 @@ func ex1() {
 
 // example5
 
-type UploadHandler struct {
+type UploadHandlerM struct {
 	UploadDir string
 }
 
 func ex5() {
-	uploadHandler := &UploadHandler{
+	uploadHandler := &UploadHandlerM{
 		UploadDir: "upload",
 	}
 
@@ -130,7 +130,7 @@ func ex5() {
 	srv.ListenAndServe()
 }
 
-func (h *UploadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *UploadHandlerM) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	file, header, err := r.FormFile("file")
 	if err != nil {
 		http.Error(w, "Unable to read file", http.StatusBadRequest)

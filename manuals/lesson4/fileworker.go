@@ -6,7 +6,6 @@ import (
 	"go.uber.org/zap"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -58,7 +57,7 @@ func (u *UploadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Cannot save file", http.StatusInternalServerError)
 		return
 	}
-	_, err = fmt.Fprintf(w, "File %s has been successfully uploaded\n. Link: ", header.Filename)
+	_, err = fmt.Fprintf(w, "File %s has been successfully uploaded.\nLink: ", header.Filename)
 	if err != nil {
 		sugar.Error(err)
 		return
@@ -150,7 +149,7 @@ func main() {
 		cancelSignal = make(chan os.Signal, 1)
 		catchSignal  = func(cancelFunc context.CancelFunc) {
 			sig := <-cancelSignal
-			log.Printf("Received stop signal - %v", sig)
+			sugar.Infof("Received stop signal - %v", sig)
 			cancelFunc()
 		}
 	)
