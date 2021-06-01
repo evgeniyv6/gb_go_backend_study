@@ -9,13 +9,14 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sync"
 	"syscall"
 	"time"
 )
 
 const (
-	folder       = "/tmp"
+	folder       = "/tmp/"
 	uploaderPort = ":6091"
 	serverPort   = ":6092"
 )
@@ -30,51 +31,81 @@ var (
 	sugar *zap.SugaredLogger
 )
 
-func (u *UploadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	file, header, err := r.FormFile("file")
-	if err != nil {
-		http.Error(w, "Cannot read file", http.StatusBadRequest)
-	}
-
-	defer func() {
-		err := file.Close()
-		if err != nil {
-
+func (u *UploadHandler) FileWalker(w *http.ResponseWriter, ext string) error {
+	err := filepath.WalkDir(u.Dir, func(path string, entry os.DirEntry, err error) error {
+		info, ierr := entry.Info()
+		if ierr != nil {
+			sugar.Error(err)
+			//return err
 		}
-	}()
-
-	data, err := io.ReadAll(file)
-	if err != nil {
-		http.Error(w, "Cannot read file", http.StatusBadRequest)
-	}
-
-	filePath := u.Dir + fmt.Sprintf("/%s", header.Filename)
-
-	err = ioutil.WriteFile(filePath, data, 0777)
-
+		if (!info.IsDir() && ext == "") || (filepath.Ext(path) == "."+ext) {
+			fmt.Fprintf(*w, "Path: %s, Name: %s, Size: %d, Ext: %s\n", path, info.Name(), info.Size(), filepath.Ext(path))
+		}
+		return nil
+	})
 	if err != nil {
 		sugar.Error(err)
-		http.Error(w, "Cannot save file", http.StatusInternalServerError)
-		return
+		//return err
 	}
-	_, err = fmt.Fprintf(w, "File %s has been successfully uploaded.\nLink: ", header.Filename)
-	if err != nil {
-		sugar.Error(err)
-		return
-	}
+	return nil
+}
 
-	err = ioutil.WriteFile(filePath, data, 0777)
-	if err != nil {
-		sugar.Error(err)
-		http.Error(w, "Unable to save file", http.StatusInternalServerError)
-		return
-	}
-	fileLink := u.Host + "/" + header.Filename
-	_, err = fmt.Fprintln(w, fileLink)
-	if err != nil {
-		sugar.Error(err)
-		http.Error(w, "Unable to save file", http.StatusInternalServerError)
-		return
+func (u *UploadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		ext := r.FormValue("ext")
+		err := u.FileWalker(&w, ext)
+		if err != nil {
+			sugar.Error(err)
+			http.Error(w, "Couldnot print a list of files", http.StatusInternalServerError)
+		}
+		fmt.Println(w.Header())
+	case http.MethodPost:
+		file, header, err := r.FormFile("file")
+		if err != nil {
+			http.Error(w, "Cannot read file", http.StatusBadRequest)
+		}
+
+		defer func() {
+			err := file.Close()
+			if err != nil {
+
+			}
+		}()
+
+		data, err := io.ReadAll(file)
+		if err != nil {
+			http.Error(w, "Cannot read file", http.StatusBadRequest)
+		}
+
+		filePath := u.Dir + fmt.Sprintf("/%s", header.Filename)
+
+		err = ioutil.WriteFile(filePath, data, 0777)
+
+		if err != nil {
+			sugar.Error(err)
+			http.Error(w, "Cannot save file", http.StatusInternalServerError)
+			return
+		}
+		_, err = fmt.Fprintf(w, "File %s has been successfully uploaded.\nLink: ", header.Filename)
+		if err != nil {
+			sugar.Error(err)
+			return
+		}
+
+		err = ioutil.WriteFile(filePath, data, 0777)
+		if err != nil {
+			sugar.Error(err)
+			http.Error(w, "Unable to save file", http.StatusInternalServerError)
+			return
+		}
+		fileLink := u.Host + "/" + header.Filename
+		_, err = fmt.Fprintln(w, fileLink)
+		if err != nil {
+			sugar.Error(err)
+			http.Error(w, "Unable to save file", http.StatusInternalServerError)
+			return
+		}
 	}
 }
 

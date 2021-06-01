@@ -5,11 +5,25 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 )
 
-func main() {
-	ex5()
+func main2() {
+	//ex5()
+	err := filepath.Walk("/tmp/",
+		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			fmt.Println(filepath.Ext(path))
+			fmt.Println(info.Size())
+			return nil
+		})
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 // exrcise 1
