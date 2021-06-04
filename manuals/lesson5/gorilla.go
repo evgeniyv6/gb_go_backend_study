@@ -9,7 +9,7 @@ import (
 
 func main() {
 	router := mux.NewRouter()
-	router.HandleFunc("/{id}", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		fmt.Fprintln(w, "GET HANDLER", vars["id"])
 		return
