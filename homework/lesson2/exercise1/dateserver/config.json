@@ -1,0 +1,9 @@
+{
+  "server": {
+    "address": "localhost",
+    "port": "8000"
+  },
+  "ticker": {
+    "delay": 1
+  }
+}
